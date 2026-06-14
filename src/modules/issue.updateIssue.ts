@@ -1,51 +1,76 @@
 import type { Request, Response } from 'express';
+import { StatusCodes } from 'http-status-codes';
 import { updateIssueService } from '../service/issue.service.js';
 
 export const updateIssue = async (req: Request, res: Response) => {
   try {
+    // Extract issue ID from URL params
     const { id } = req.params;
 
+    // Get authenticated user from JWT payload
     const user = req.user;
 
-    const data = req.body;
+    const { title, description, type, status } = req.body;
 
-    const { title, description, type } = req.body;
-
-    if (!title?.trim() || !description?.trim() || !type?.trim()) {
-      return res.status(400).json({
+    // Validate that at least one field is provided for update
+    if (!title && !description && !type && !status) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
         message: 'Validation failed',
-        errors: 'title, description and type are required',
+        errors:
+          'At least one field (title, description, type, status) is required',
       });
     }
 
-    if (title.length > 150) {
-      return res.status(400).json({
+    // Validate title length if provided
+    if (title !== undefined && title.length > 150) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
         message: 'Validation failed',
         errors: 'Title cannot exceed 150 characters',
       });
     }
 
-    if (description.length < 20) {
-      return res.status(400).json({
+    // Validate description minimum length if provided
+    if (description !== undefined && description.length < 20) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
         message: 'Validation failed',
         errors: 'Description must be at least 20 characters',
       });
     }
 
-    if (type !== 'bug' && type !== 'feature_request') {
-      return res.status(400).json({
+    // Validate type is one of the allowed values if provided
+    if (type !== undefined && type !== 'bug' && type !== 'feature_request') {
+      return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
         message: 'Validation failed',
         errors: 'Invalid issue type',
       });
     }
 
-    const result = await updateIssueService(id as string, data, user);
+    // Validate status is one of the allowed workflow states if provided
+    if (
+      status !== undefined &&
+      status !== 'open' &&
+      status !== 'in_progress' &&
+      status !== 'resolved'
+    ) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        message: 'Validation failed',
+        errors: 'Status must be open, in_progress or resolved',
+      });
+    }
 
-    res.status(200).json({
+    // Apply update with role-based permission checks in service layer
+    const result = await updateIssueService(
+      id as string,
+      { title, description, type, status },
+      user
+    );
+
+    res.status(StatusCodes.OK).json({
       success: true,
       message: 'Issue updated successfully',
       data: result,
@@ -53,31 +78,35 @@ export const updateIssue = async (req: Request, res: Response) => {
   } catch (error) {
     const err = error as Error;
 
+    // Return 404 if issue does not exist
     if (err.message === 'Issue not found') {
-      return res.status(404).json({
+      return res.status(StatusCodes.NOT_FOUND).json({
         success: false,
         message: 'Issue not found',
         errors: err.message,
       });
     }
 
+    // Return 403 if user does not have permission to update this issue
     if (err.message === 'You are not allowed to update this issue') {
-      return res.status(403).json({
+      return res.status(StatusCodes.FORBIDDEN).json({
         success: false,
         message: 'Forbidden access',
         errors: err.message,
       });
     }
 
+    // Return 409 if issue status prevents the update
     if (err.message === 'Only open issues can be updated') {
-      return res.status(409).json({
+      return res.status(StatusCodes.CONFLICT).json({
         success: false,
         message: 'Issue update conflict',
         errors: err.message,
       });
     }
 
-    res.status(500).json({
+    // Handle unexpected server errors
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Failed to update issue',
       errors: err.message,
