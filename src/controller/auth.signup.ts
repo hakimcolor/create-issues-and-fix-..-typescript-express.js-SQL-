@@ -1,55 +1,54 @@
-import type { Request, Response } from "express";
-import { createUserService } from "../service/auth.createUserService.js";
+import type { Request, Response } from 'express';
+import { StatusCodes } from 'http-status-codes';
+import { createUserService } from '../service/auth.createUserService.js';
 
 export const signup = async (req: Request, res: Response) => {
   try {
-    const {name, email, password, role} = req.body;
+    const { name, email, password, role } = req.body;
 
-    if ( !name || !email || !password || !role ){
-
-      return res.status(400).json({
+    // Validate all required fields are present
+    if (!name || !email || !password || !role) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
-        message: "All fields are required",
-        errors: "name, email, password and role are required",
+        message: 'All fields are required',
+        errors: 'name, email, password and role are required',
       });
-
     }
 
-    if ( role !== "contributor" && role !== "maintainer" ){
-
-      return res.status(400).json({
+    // Validate role is one of the allowed values
+    if (role !== 'contributor' && role !== 'maintainer') {
+      return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
-        message: "Invalid role",
-        errors: "Role must be contributor or maintainer",
+        message: 'Invalid role',
+        errors: 'Role must be contributor or maintainer',
       });
-
     }
 
+    // Create the user via service layer
     const result = await createUserService(name, email, password, role);
-    
-    res.status(201).json({
+
+    res.status(StatusCodes.CREATED).json({
       success: true,
-      message: "User registered successfully",
+      message: 'User registered successfully',
       data: result,
     });
   } catch (error) {
-
     const err = error as Error;
 
-    if (err.message === "Email already exists") {
-      return res.status(400).json({
+    // Handle duplicate email conflict
+    if (err.message === 'Email already exists') {
+      return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
-        message: "Email already exists",
+        message: 'Email already exists',
         errors: err.message,
       });
     }
 
-    res.status(500).json({
+    // Handle unexpected server errors
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
-      message: "Something went wrong",
+      message: 'Something went wrong',
       errors: err.message,
     });
-    
   }
 };
-
