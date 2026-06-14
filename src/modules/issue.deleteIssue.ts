@@ -4,13 +4,13 @@ import { deleteIssueService } from '../service/issue.service.js';
 
 export const deleteIssue = async (req: Request, res: Response) => {
   try {
-    // Extract issue ID from URL params
+  
     const { id } = req.params;
 
-    // Get authenticated user from JWT payload
+    
     const user = req.user;
 
-    // Delete the issue with maintainer-only permission check in service layer
+  
     await deleteIssueService(id as string, user);
 
     res.status(StatusCodes.OK).json({
@@ -20,7 +20,6 @@ export const deleteIssue = async (req: Request, res: Response) => {
   } catch (error) {
     const err = error as Error;
 
-    // Return 404 if issue does not exist
     if (err.message === 'Issue not found') {
       return res.status(StatusCodes.NOT_FOUND).json({
         success: false,
@@ -29,7 +28,7 @@ export const deleteIssue = async (req: Request, res: Response) => {
       });
     }
 
-    // Return 403 if user is not a maintainer
+  
     if (err.message === 'Only maintainer can delete issues') {
       return res.status(StatusCodes.FORBIDDEN).json({
         success: false,
@@ -38,7 +37,7 @@ export const deleteIssue = async (req: Request, res: Response) => {
       });
     }
 
-    // Handle unexpected server errors
+  
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Failed to delete issue',

@@ -5,7 +5,7 @@ import type { JwtPayload } from '../utils/index.js';
 
 export const auth = (req: Request, res: Response, next: NextFunction) => {
   try {
-    // jwt token .. 
+    // jwt token ..
     const token = req.headers.authorization;
 
     // if token is missing so not show and error show ..
@@ -17,7 +17,7 @@ export const auth = (req: Request, res: Response, next: NextFunction) => {
       });
     }
 
-    // Verify token signature and expiry, then attach decoded payload to request
+    // Verify token
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET as string
@@ -27,7 +27,6 @@ export const auth = (req: Request, res: Response, next: NextFunction) => {
 
     next();
   } catch (error) {
-    // Handle invalid or expired token
     return res.status(StatusCodes.UNAUTHORIZED).json({
       success: false,
       message: 'Invalid token',

@@ -20,7 +20,7 @@ export const createIssueService = async (
   type: string,
   reporter_id: number
 ) => {
-  // Insert a new issue and return all fields
+  //insert into issues 
   const query = `
     INSERT INTO issues (title, description, type, reporter_id)
     VALUES ($1, $2, $3, $4)
@@ -38,30 +38,25 @@ export const createIssueService = async (
 };
 
 export const getAllIssuesService = async (queryParams: IIssueQueryParams) => {
-  // Build parameterized query to prevent SQL injection
   const conditions: string[] = [];
   const values: string[] = [];
   let paramIndex = 1;
 
-  // Add type filter condition if provided
   if (queryParams.type) {
     conditions.push(`type = $${paramIndex}`);
     values.push(queryParams.type);
     paramIndex++;
   }
 
-  // Add status filter condition if provided
   if (queryParams.status) {
     conditions.push(`status = $${paramIndex}`);
     values.push(queryParams.status);
     paramIndex++;
   }
 
-  // Compose the WHERE clause from collected conditions
   const whereClause =
     conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  // Apply sort order — default to newest first
   const orderClause =
     queryParams.sort === 'oldest'
       ? `ORDER BY created_at ASC`
@@ -72,10 +67,9 @@ export const getAllIssuesService = async (queryParams: IIssueQueryParams) => {
   const issuesResult = await pool.query(query, values);
   const issues = issuesResult.rows;
 
-  // Collect unique reporter IDs for a single batch user lookup
   const reporterIds = [...new Set(issues.map((issue) => issue.reporter_id))];
 
-  // Fetch all relevant reporters in one query instead of N queries
+  // select id 
   const usersResult = await pool.query(
     `SELECT id, name, role FROM users WHERE id = ANY($1)`,
     [reporterIds]
@@ -83,7 +77,6 @@ export const getAllIssuesService = async (queryParams: IIssueQueryParams) => {
 
   const users = usersResult.rows;
 
-  // Merge reporter details into each issue object
   return issues.map((issue) => {
     const reporter = users.find((user) => user.id === issue.reporter_id);
     return {
@@ -100,19 +93,16 @@ export const getAllIssuesService = async (queryParams: IIssueQueryParams) => {
 };
 
 export const getSingleIssueService = async (id: string) => {
-  // Fetch the issue by its primary key
   const issueResult = await pool.query(`SELECT * FROM issues WHERE id = $1`, [
     id,
   ]);
 
   const issue = issueResult.rows[0];
 
-  // Throw if no issue found with the given ID
   if (!issue) {
     throw new Error('Issue not found');
   }
 
-  // Fetch the reporter's public profile details
   const userResult = await pool.query(
     `SELECT id, name, role FROM users WHERE id = $1`,
     [issue.reporter_id]
@@ -137,19 +127,18 @@ export const updateIssueService = async (
   payload: IIssueUpdatePayload,
   user: JwtPayload
 ) => {
-  // Fetch the existing issue to validate existence and permissions
+ 
   const issueResult = await pool.query(`SELECT * FROM issues WHERE id = $1`, [
     id,
   ]);
 
   const issue = issueResult.rows[0];
 
-  // Throw if no issue found with the given ID
   if (!issue) {
     throw new Error('Issue not found');
   }
 
-  // Contributors can only update their own issues and only when status is open
+  
   if (user.role !== 'maintainer') {
     if (issue.reporter_id !== user.id) {
       throw new Error('You are not allowed to update this issue');
@@ -160,13 +149,13 @@ export const updateIssueService = async (
     }
   }
 
-  // Use existing values as fallback when a field is not provided in payload
+ 
   const updatedTitle = payload.title ?? issue.title;
   const updatedDescription = payload.description ?? issue.description;
   const updatedType = payload.type ?? issue.type;
   const updatedStatus = payload.status ?? issue.status;
 
-  // Maintainers can update status; contributors' status changes are ignored (blocked above)
+  // deleate
   const updateQuery = `
     UPDATE issues
     SET
@@ -191,23 +180,20 @@ export const updateIssueService = async (
 };
 
 export const deleteIssueService = async (id: string, user: JwtPayload) => {
-  // Fetch the issue to confirm it exists before deletion
+  
   const issueResult = await pool.query(`SELECT * FROM issues WHERE id = $1`, [
     id,
   ]);
 
   const issue = issueResult.rows[0];
 
-  // Throw if no issue found with the given ID
   if (!issue) {
     throw new Error('Issue not found');
   }
 
-  // Only maintainers are allowed to delete issues
   if (user.role !== 'maintainer') {
     throw new Error('Only maintainer can delete issues');
   }
 
-  // Permanently remove the issue from the database
   await pool.query(`DELETE FROM issues WHERE id = $1`, [id]);
 };

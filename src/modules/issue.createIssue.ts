@@ -6,7 +6,6 @@ export const createIssue = async (req: Request, res: Response) => {
   try {
     const { title, description, type } = req.body;
 
-    // Validate all required fields are present and not empty
     if (!title?.trim() || !description?.trim() || !type?.trim()) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
@@ -15,7 +14,6 @@ export const createIssue = async (req: Request, res: Response) => {
       });
     }
 
-    // Validate title does not exceed maximum character limit
     if (title.length > 150) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
@@ -24,7 +22,6 @@ export const createIssue = async (req: Request, res: Response) => {
       });
     }
 
-    // Validate description meets minimum character requirement
     if (description.length < 20) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
@@ -33,7 +30,6 @@ export const createIssue = async (req: Request, res: Response) => {
       });
     }
 
-    // Validate type is one of the allowed issue categories
     if (type !== 'bug' && type !== 'feature_request') {
       return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
@@ -42,10 +38,8 @@ export const createIssue = async (req: Request, res: Response) => {
       });
     }
 
-    // Extract reporter identity from decoded JWT payload
     const reporter_id = req.user.id;
 
-    // Persist the new issue via service layer
     const result = await createIssueService(
       title,
       description,
@@ -59,7 +53,6 @@ export const createIssue = async (req: Request, res: Response) => {
       data: result,
     });
   } catch (error) {
-    // Handle unexpected server errors
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Failed to create issue',

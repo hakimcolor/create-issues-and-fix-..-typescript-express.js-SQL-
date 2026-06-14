@@ -3,9 +3,11 @@ import express, {
   type Request,
   type Response,
 } from 'express';
-import Router from './router/server.route.js';
 import dotenv from 'dotenv';
 dotenv.config();
+
+import Router from './router/server.route.js';
+import { migrate } from './config/migrate.js';
 
 const app: Application = express();
 const port: number = Number(process.env.PORT) || 5000;
@@ -21,6 +23,14 @@ app.get('/', (req: Request, res: Response) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Server is Running on ${port}`);
-});
+// Run database migrations then start the server
+migrate()
+  .then(() => {
+    app.listen(port, () => {
+      console.log(`Server is Running on ${port}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Migration failed:', err);
+    process.exit(1);
+  });
