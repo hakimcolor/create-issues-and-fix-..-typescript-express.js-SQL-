@@ -5,10 +5,10 @@ import type { JwtPayload } from '../utils/index.js';
 
 export const auth = (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Extract JWT token from Authorization header
+    // jwt token .. 
     const token = req.headers.authorization;
 
-    // Reject request if token is missing
+    // if token is missing so not show and error show ..
     if (!token) {
       return res.status(StatusCodes.UNAUTHORIZED).json({
         success: false,
