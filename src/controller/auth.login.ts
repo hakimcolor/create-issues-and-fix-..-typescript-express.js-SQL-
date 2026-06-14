@@ -6,7 +6,7 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    // Validate required login credentials are present
+    // required login  present
     if (!email || !password) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
@@ -15,7 +15,7 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Authenticate user and generate JWT token
+    // jwt for the user ...
     const result = await loginUserService(email, password);
 
     res.status(StatusCodes.OK).json({
@@ -26,7 +26,7 @@ export const login = async (req: Request, res: Response) => {
   } catch (error) {
     const err = error as Error;
 
-    // Handle invalid credentials (user not found or wrong password)
+    // if no user so ..
     if (
       err.message === 'User not found' ||
       err.message === 'Invalid password'
@@ -38,7 +38,6 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Handle unexpected server errors
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Something went wrong',
