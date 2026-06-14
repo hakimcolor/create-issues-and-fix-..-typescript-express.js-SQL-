@@ -1,43 +1,48 @@
-import type { Request, Response } from "express";
-import { deleteIssueService } from "../service/issue.service.js";
+import type { Request, Response } from 'express';
+import { StatusCodes } from 'http-status-codes';
+import { deleteIssueService } from '../service/issue.service.js';
 
-export const deleteIssue = async (req:Request, res: Response) => {
+export const deleteIssue = async (req: Request, res: Response) => {
   try {
+    // Extract issue ID from URL params
     const { id } = req.params;
 
+    // Get authenticated user from JWT payload
     const user = req.user;
 
+    // Delete the issue with maintainer-only permission check in service layer
     await deleteIssueService(id as string, user);
 
-    res.status(200).json({
+    res.status(StatusCodes.OK).json({
       success: true,
-      message: "Issue deleted successfully",
+      message: 'Issue deleted successfully',
     });
   } catch (error) {
-
     const err = error as Error;
 
-    if (err.message === "Issue not found") {
-      return res.status(404).json({
+    // Return 404 if issue does not exist
+    if (err.message === 'Issue not found') {
+      return res.status(StatusCodes.NOT_FOUND).json({
         success: false,
-        message: "Issue not found",
+        message: 'Issue not found',
         errors: err.message,
       });
     }
 
-    if (err.message === "Only maintainer can delete issues") {
-      return res.status(403).json({
+    // Return 403 if user is not a maintainer
+    if (err.message === 'Only maintainer can delete issues') {
+      return res.status(StatusCodes.FORBIDDEN).json({
         success: false,
-        message: "Forbidden access",
+        message: 'Forbidden access',
         errors: err.message,
       });
     }
 
-    res.status(500).json({
+    // Handle unexpected server errors
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
-      message: "Failed to delete issue",
+      message: 'Failed to delete issue',
       errors: err.message,
     });
-
-}
+  }
 };
