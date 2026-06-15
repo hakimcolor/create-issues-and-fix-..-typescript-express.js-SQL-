@@ -1,202 +1,302 @@
 # DevPulse API
 
-A REST API for managing bug reports and feature requests. Built with Node.js, TypeScript, Express, and PostgreSQL (Neon).
+> A backend REST API for tracking bugs and feature requests — built for dev teams.
+
+**Live:** https://issuetask-rho.vercel.app
 
 ---
 
-## Tech Stack
+## Stack
 
-- Node.js + TypeScript
-- Express.js
-- PostgreSQL (Neon) — raw SQL, no ORM
-- bcrypt, jsonwebtoken
+|           |                                  |
+| --------- | -------------------------------- |
+| Runtime   | Node.js 24.x + TypeScript        |
+| Framework | Express.js                       |
+| Database  | PostgreSQL (Neon) — raw SQL only |
+| Auth      | JWT + bcrypt                     |
+| Deploy    | Vercel                           |
 
 ---
 
-## Setup
-
-1. Install dependencies
+## Getting Started
 
 ```bash
+# Install dependencies
 npm install
-```
 
-2. Create `.env` file
+# Add environment variables
+cp .env.example .env
 
-```env
-PORT=5000
-DATABASE_URL=your_neon_postgresql_url
-JWT_SECRET=your_secret_key
-```
-
-3. Run in development
-
-```bash
+# Start dev server
 npm run dev
-```
 
-4. Build for production
-
-```bash
+# Build for production
 npm run build
 npm start
 ```
 
-> Tables are created automatically on server start.
+### Environment Variables
+
+```env
+PORT=5000
+DATABASE_URL=your_neon_postgresql_connection_string
+JWT_SECRET=your_secret_key
+```
+
+> Tables are auto-created on first server start.
 
 ---
 
-## Roles
+## Roles & Permissions
 
-| Role          | Permissions                                                                    |
-| ------------- | ------------------------------------------------------------------------------ |
-| `contributor` | Register, login, create issues, view issues, update own open issues            |
-| `maintainer`  | All contributor permissions + update any issue + change status + delete issues |
+| Action                               | contributor | maintainer |
+| ------------------------------------ | :---------: | :--------: |
+| Register & Login                     |     ✅      |     ✅     |
+| Create issue                         |     ✅      |     ✅     |
+| View all issues                      |     ✅      |     ✅     |
+| Update own issue (status: open only) |     ✅      |     ✅     |
+| Update any issue + change status     |     ❌      |     ✅     |
+| Delete issue                         |     ❌      |     ✅     |
 
 ---
 
 ## Authentication
 
-Send token in the `Authorization` header:
+All protected routes require a JWT in the `Authorization` header:
 
 ```
-Authorization: <JWT_TOKEN>
+Authorization: <token>
 ```
+
+Get your token from the login endpoint.
 
 ---
 
-## API Endpoints
+## API Reference
+
+Base URL: `https://issuetask-rho.vercel.app/api`
+
+---
 
 ### Auth
 
-#### Register
+#### `POST /auth/signup`
 
-```
-POST /api/auth/signup
-```
+Register a new account.
 
 ```json
+// Request
 {
   "name": "John Doe",
   "email": "john@example.com",
   "password": "password123",
   "role": "contributor"
 }
+
+// Response 201
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "role": "contributor",
+    "created_at": "2026-01-20T09:00:00Z",
+    "updated_at": "2026-01-20T09:00:00Z"
+  }
+}
 ```
 
-#### Login
+---
 
-```
-POST /api/auth/login
-```
+#### `POST /auth/login`
+
+Login and receive a JWT token.
 
 ```json
+// Request
 {
   "email": "john@example.com",
   "password": "password123"
 }
-```
 
-Returns a `token` — use it in all protected requests.
+// Response 200
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "contributor",
+      "created_at": "2026-01-20T09:00:00Z",
+      "updated_at": "2026-01-20T09:00:00Z"
+    }
+  }
+}
+```
 
 ---
 
 ### Issues
 
-#### Create Issue `🔒`
+#### `POST /issues` 🔒
 
-```
-POST /api/issues
-Authorization: <token>
-```
+Create a new issue.
 
 ```json
+// Request
 {
-  "title": "Something is broken",
-  "description": "Detailed explanation at least 20 chars",
+  "title": "Database connection timeout under load",
+  "description": "Pool exhausts after 50+ concurrent queries, causing 500 errors",
   "type": "bug"
 }
-```
 
-`type` → `bug` or `feature_request`
-
----
-
-#### Get All Issues
-
-```
-GET /api/issues
-```
-
-Query params (all optional):
-
-| Param    | Values                            |
-| -------- | --------------------------------- |
-| `sort`   | `newest` (default), `oldest`      |
-| `type`   | `bug`, `feature_request`          |
-| `status` | `open`, `in_progress`, `resolved` |
-
-Example:
-
-```
-GET /api/issues?type=bug&status=open&sort=oldest
-```
-
----
-
-#### Get Single Issue
-
-```
-GET /api/issues/:id
-```
-
----
-
-#### Update Issue `🔒`
-
-```
-PATCH /api/issues/:id
-Authorization: <token>
-```
-
-```json
+// Response 201
 {
-  "title": "Updated title",
-  "description": "Updated description here",
-  "type": "feature_request",
-  "status": "in_progress"
+  "success": true,
+  "message": "Issue created successfully",
+  "data": {
+    "id": 45,
+    "title": "Database connection timeout under load",
+    "description": "Pool exhausts after 50+ concurrent queries, causing 500 errors",
+    "type": "bug",
+    "status": "open",
+    "reporter_id": 1,
+    "created_at": "2026-01-20T10:30:00Z",
+    "updated_at": "2026-01-20T10:30:00Z"
+  }
 }
 ```
 
-- Contributors can only update their own issues when status is `open`
-- Maintainers can update any issue including `status`
+`type` must be `bug` or `feature_request`
 
 ---
 
-#### Delete Issue `🔒 Maintainer only`
+#### `GET /issues`
+
+Get all issues. Public endpoint.
 
 ```
-DELETE /api/issues/:id
-Authorization: <token>
+GET /api/issues?type=bug&status=open&sort=newest
+```
+
+| Param    | Options                           | Default  |
+| -------- | --------------------------------- | -------- |
+| `sort`   | `newest`, `oldest`                | `newest` |
+| `type`   | `bug`, `feature_request`          | —        |
+| `status` | `open`, `in_progress`, `resolved` | —        |
+
+```json
+// Response 200
+{
+  "success": true,
+  "message": "Issues retrived successfully",
+  "data": [
+    {
+      "id": 45,
+      "title": "Database connection timeout under load",
+      "description": "Pool exhausts after 50+ concurrent queries, causing 500 errors",
+      "type": "bug",
+      "status": "open",
+      "reporter": {
+        "id": 1,
+        "name": "John Doe",
+        "role": "contributor"
+      },
+      "created_at": "2026-01-20T10:30:00Z",
+      "updated_at": "2026-01-20T10:30:00Z"
+    }
+  ]
+}
+```
+
+---
+
+#### `GET /issues/:id`
+
+Get a single issue by ID. Public endpoint.
+
+```json
+// Response 200
+{
+  "success": true,
+  "message": "Issue retrived successfully",
+  "data": {
+    "id": 45,
+    "title": "Database connection timeout under load",
+    "description": "Pool exhausts after 50+ concurrent queries, causing 500 errors",
+    "type": "bug",
+    "status": "open",
+    "reporter": {
+      "id": 1,
+      "name": "John Doe",
+      "role": "contributor"
+    },
+    "created_at": "2026-01-20T10:30:00Z",
+    "updated_at": "2026-01-20T10:30:00Z"
+  }
+}
+```
+
+---
+
+#### `PATCH /issues/:id` 🔒
+
+Update an issue.
+
+- **Contributors** — can only update their own issues when status is `open`
+- **Maintainers** — can update any issue including `status`
+
+```json
+// Request
+{
+  "title": "Updated title here",
+  "description": "Updated description with more detail here",
+  "type": "bug",
+  "status": "in_progress"
+}
+
+// Response 200
+{
+  "success": true,
+  "message": "Issue updated successfully",
+  "data": { ... }
+}
+```
+
+---
+
+#### `DELETE /issues/:id` 🔒 `maintainer only`
+
+Permanently delete an issue.
+
+```json
+// Response 200
+{
+  "success": true,
+  "message": "Issue deleted successfully"
+}
 ```
 
 ---
 
 ## Response Format
 
-Success:
+Every response follows the same structure:
 
 ```json
+// Success
 {
   "success": true,
-  "message": "Operation description",
+  "message": "Description",
   "data": {}
 }
-```
 
-Error:
-
-```json
+// Error
 {
   "success": false,
   "message": "Error description",
@@ -206,15 +306,47 @@ Error:
 
 ---
 
-## Status Codes
+## HTTP Status Codes
 
-| Code | Meaning      |
-| ---- | ------------ |
-| 200  | OK           |
-| 201  | Created      |
-| 400  | Bad Request  |
-| 401  | Unauthorized |
-| 403  | Forbidden    |
-| 404  | Not Found    |
-| 409  | Conflict     |
-| 500  | Server Error |
+| Code  | Meaning                                 |
+| ----- | --------------------------------------- |
+| `200` | OK                                      |
+| `201` | Created                                 |
+| `400` | Bad Request — validation error          |
+| `401` | Unauthorized — missing or invalid token |
+| `403` | Forbidden — insufficient permissions    |
+| `404` | Not Found                               |
+| `409` | Conflict — business logic violation     |
+| `500` | Internal Server Error                   |
+
+---
+
+## Project Structure
+
+```
+src/
+├── config/
+│   ├── db.ts           # PostgreSQL pool
+│   └── migrate.ts      # Auto table creation
+├── controller/
+│   ├── auth.login.ts
+│   └── auth.signup.ts
+├── middleware/
+│   └── auth.middle.ts  # JWT verification
+├── modules/
+│   ├── issue.createIssue.ts
+│   ├── issue.deleteIssue.ts
+│   ├── issue.getAllIssues.ts
+│   ├── issue.getSingleIssue.ts
+│   └── issue.updateIssue.ts
+├── router/
+│   └── server.route.ts
+├── service/
+│   ├── auth.createUserService.ts
+│   ├── auth.loginUserService.ts
+│   └── issue.service.ts
+├── utils/
+│   ├── auth.interface.ts
+│   └── index.ts
+└── server.ts
+```

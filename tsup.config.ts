@@ -16,8 +16,8 @@ export default defineConfig({
   // Clean dist folder before each build
   clean: true,
 
-  // Do not bundle node_modules
-  bundle: false,
+  // Bundle everything into a single output file
+  bundle: true,
 
   // Skip type declarations for faster builds
   dts: false,
